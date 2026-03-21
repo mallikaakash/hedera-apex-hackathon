@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: b-hive-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run api:start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: API_PORT
+        value: 4000
+
+  - type: worker
+    name: b-hive-monitor
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run monitor:start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22

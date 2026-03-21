@@ -8,10 +8,10 @@
   "strategy_every_n_runs": 3,
   "news_every_n_runs": 2,
   "status": "idle",
-  "last_cycle_started_at": "2026-03-21T15:52:59.181Z",
-  "last_cycle_finished_at": "2026-03-21T15:53:09.771Z",
+  "last_cycle_started_at": "2026-03-21T16:17:59.197Z",
+  "last_cycle_finished_at": "2026-03-21T16:19:41.446Z",
   "day": "2026-03-21",
-  "runs_today": 25,
-  "run_counter": 25,
-  "last_run_id": "662ea8fe-0a87-4e5f-85e1-202c6f7c48f9"
+  "runs_today": 30,
+  "run_counter": 30,
+  "last_run_id": "05a0e5ba-8f34-4fe2-90c5-491bae144f58"
 }

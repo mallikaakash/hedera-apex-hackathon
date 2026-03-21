@@ -3,7 +3,7 @@ const { URL } = require("url");
 const fs = require("fs");
 const { getLogPath } = require("./orchestration/decision-store");
 
-const PORT = Number(process.env.API_PORT || 4000);
+const PORT = Number(process.env.PORT || process.env.API_PORT || 4000);
 const STREAM_POLL_MS = Math.max(800, Number(process.env.STREAM_POLL_MS || 1500));
 const MONITOR_HEARTBEAT_PATH = `${process.cwd()}/data/monitor-heartbeat.json`;
 const MONITOR_STATE_PATH = `${process.cwd()}/data/monitor-state.json`;
