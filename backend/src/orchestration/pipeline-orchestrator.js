@@ -7,6 +7,7 @@ const { runExecutionReadAgent } = require("../agents/execution-read-agent");
 const mirror = require("../integrations/mirror-node");
 const { runHederaToolkitAgentBootstrap } = require("../agents/hedera-toolkit-agent");
 const { runStrategyReasonerAgent } = require("../agents/strategy-reasoner-agent");
+const { evaluateJuniorEscalation } = require("../swarm/junior-reasoner");
 const {
   fetchCrossChainTvlSnapshot,
   fetchFearGreedIndex,
@@ -90,7 +91,13 @@ async function runOrchestrator({
   policy = defaultPolicy(),
   pack = defaultPack(),
   enableStrategyReasoner = true,
+  forceStrategyReasoner = false,
+  enableMirrorAccount = true,
+  enableRisk = true,
+  enableExecutionRead = true,
+  enableExternalContext = true,
   enableExternalNews = true,
+  enableHederaToolkit = true,
   onEvent,
 } = {}) {
   const cfg = getConfig();
@@ -108,6 +115,7 @@ async function runOrchestrator({
     mirrorAccount: null,
     executionRead: null,
     externalContext: null,
+    juniorGate: null,
     strategy: null,
     executionGate: null,
     vaultScope: null,
@@ -171,6 +179,12 @@ async function runOrchestrator({
     "mirror_account",
     { account_id: state.accountId },
     await (async () => {
+      if (!enableMirrorAccount) {
+        return {
+          outputs: { ok: false, skipped: true, reason: "Mirror node disabled for this run" },
+          toolCalls: [],
+        };
+      }
       if (!state.accountId) {
         return { outputs: { ok: false, skipped: true, reason: "No ACCOUNT_ID set" }, toolCalls: [] };
       }
@@ -199,6 +213,9 @@ async function runOrchestrator({
     "risk",
     { account_id: state.accountId, evm_address: state.evmAddress || null },
     await (async () => {
+      if (!enableRisk) {
+        return { outputs: { ok: false, skipped: true, reason: "Risk agent disabled for this run" }, toolCalls: [] };
+      }
       const out = await runRiskAgent(state.accountId, state.evmAddress);
       return { outputs: out, toolCalls: [{ tool: "bonzo.fetchDashboard" }] };
     })(),
@@ -209,6 +226,12 @@ async function runOrchestrator({
     "execution_read",
     { evm_address: state.evmAddress },
     await (async () => {
+      if (!enableExecutionRead) {
+        return {
+          outputs: { ok: false, skipped: true, reason: "Execution read agent disabled for this run" },
+          toolCalls: [],
+        };
+      }
       const out = await runExecutionReadAgent({ evmAddress: state.evmAddress });
       return { outputs: out, toolCalls: [{ tool: "lendingPool.getUserAccountData" }] };
     })(),
@@ -219,6 +242,9 @@ async function runOrchestrator({
     "external_context",
     { providers: ["defillama", "alternative.me", "gnews(optional)"] },
     await (async () => {
+      if (!enableExternalContext) {
+        return { outputs: { ok: false, skipped: true, reason: "External context disabled for this run" }, toolCalls: [] };
+      }
       const [cross, fear, news] = await Promise.allSettled([
         fetchCrossChainTvlSnapshot(8),
         fetchFearGreedIndex(),
@@ -243,6 +269,26 @@ async function runOrchestrator({
   );
   state.externalContext = externalOutputs;
 
+  const juniorGateOutputs = await emitStep(
+    "junior_gate",
+    {
+      policy_id: policy.policy_id,
+      force_strategy_reasoner: forceStrategyReasoner,
+    },
+    await (async () => {
+      const gate = evaluateJuniorEscalation({
+        market: state.market,
+        risk: state.risk,
+        executionRead: state.executionRead,
+        externalContext: state.externalContext,
+        policy,
+        forceStrategyReasoner,
+      });
+      return { outputs: { ok: true, ...gate }, toolCalls: [] };
+    })(),
+  );
+  state.juniorGate = juniorGateOutputs;
+
   const strategyOutputs = await emitStep(
     "strategy_reasoner",
     {
@@ -253,9 +299,17 @@ async function runOrchestrator({
       enabled: enableStrategyReasoner,
     },
     await (async () => {
-      if (!enableStrategyReasoner) {
+      const escalated = !!state.juniorGate?.escalate_strategy;
+      if (!enableStrategyReasoner || !escalated) {
         return {
-          outputs: { ok: false, skipped: true, reason: "Strategy reasoner disabled for this run" },
+          outputs: {
+            ok: false,
+            skipped: true,
+            reason: !enableStrategyReasoner
+              ? "Strategy reasoner disabled by runtime flag"
+              : "Junior gate kept cycle in watch mode",
+            junior_reasons: state.juniorGate?.reasons || [],
+          },
           toolCalls: [],
         };
       }
@@ -329,6 +383,12 @@ async function runOrchestrator({
     "hedera_toolkit_bootstrap",
     { chain_id: cfg.hederaChainId },
     await (async () => {
+      if (!enableHederaToolkit) {
+        return {
+          outputs: { ok: false, skipped: true, reason: "Hedera toolkit bootstrap disabled for this run" },
+          toolCalls: [],
+        };
+      }
       try {
         const out = await runHederaToolkitAgentBootstrap();
         return { outputs: out, toolCalls: [{ tool: "hedera-agent-kit.bootstrap" }] };

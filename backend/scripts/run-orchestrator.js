@@ -36,7 +36,11 @@ async function main() {
   const out = await runOrchestrator({
     onEvent: verbose
       ? (event) => {
-          const status = event.outputs?.ok === false ? "FAILED" : "OK";
+          const status = event.outputs?.skipped
+            ? "SKIPPED"
+            : event.outputs?.ok === false
+              ? "FAILED"
+              : "OK";
           console.log(
             `[trace] step=${event.step_index} agent=${event.agent} status=${status} tools=${event.tool_calls?.length || 0}`,
           );

@@ -123,10 +123,11 @@ npm run hcs:create-topic
 npm run monitor:start
 ```
 
-This runs the orchestrator continuously with rate-aware toggles:
-- Market/risk/chain checks every cycle
-- LLM strategy node only every `STRATEGY_EVERY_N_RUNS`
-- News call only every `NEWS_EVERY_N_RUNS`
+This runs the orchestrator continuously with a tiered swarm gate:
+- Watcher-style checks every cycle (market/mirror/risk/execution)
+- `junior_gate` decides watch vs escalate
+- Senior strategy reasoner runs only on escalation (plus periodic forced audit)
+- External context/news fetched at bounded cadence
 - Daily run cap via `MAX_RUNS_PER_DAY`
 - No overlapping runs
 
@@ -146,8 +147,8 @@ This runs the orchestrator continuously with rate-aware toggles:
 | `DECISION_LOG_PATH` | no | JSONL path for DecisionEvents (`data/decision-events.jsonl`) |
 | `HCS_TOPIC_ID` | no | Required to publish commitment attestations on Hedera |
 | `MONITOR_INTERVAL_SECONDS` | no | Loop interval for proactive monitor (default 300) |
-| `STRATEGY_EVERY_N_RUNS` | no | Run LLM strategy node every N loops (default 3) |
-| `NEWS_EVERY_N_RUNS` | no | Run news API every N loops (default 2) |
+| `EXTERNAL_CONTEXT_EVERY_N_RUNS` | no | Fetch external context/news every N loops (default 2) |
+| `FORCE_STRATEGY_EVERY_N_RUNS` | no | Force periodic strategist audit every N loops (default 6) |
 | `MAX_RUNS_PER_DAY` | no | Hard daily cap for monitor loops (default 240) |
 | `QDRANT_URL` | no | Enables RAG tool + Qdrant smoke when set |
 | `QDRANT_API_KEY` | no | Qdrant Cloud (if required) |

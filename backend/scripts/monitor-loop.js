@@ -10,8 +10,8 @@ const path = require("path");
 const { runOrchestrator } = require("../src/orchestration/pipeline-orchestrator");
 
 const intervalSec = Math.max(60, Number(process.env.MONITOR_INTERVAL_SECONDS || 300));
-const strategyEvery = Math.max(1, Number(process.env.STRATEGY_EVERY_N_RUNS || 3));
-const newsEvery = Math.max(1, Number(process.env.NEWS_EVERY_N_RUNS || 2));
+const externalEvery = Math.max(1, Number(process.env.EXTERNAL_CONTEXT_EVERY_N_RUNS || 2));
+const forceStrategyEvery = Math.max(1, Number(process.env.FORCE_STRATEGY_EVERY_N_RUNS || 6));
 const maxRunsPerDay = Math.max(1, Number(process.env.MAX_RUNS_PER_DAY || 240));
 const statePath = path.join(__dirname, "..", "data", "monitor-state.json");
 const heartbeatPath = path.join(__dirname, "..", "data", "monitor-heartbeat.json");
@@ -37,8 +37,8 @@ function writeHeartbeat(patch) {
   const next = {
     pid: process.pid,
     interval_seconds: intervalSec,
-    strategy_every_n_runs: strategyEvery,
-    news_every_n_runs: newsEvery,
+    external_every_n_runs: externalEvery,
+    force_strategy_every_n_runs: forceStrategyEvery,
     max_runs_per_day: maxRunsPerDay,
     updated_at: new Date().toISOString(),
     ...current,
@@ -76,16 +76,23 @@ async function oneCycle() {
   s.runsToday += 1;
   saveState(s);
 
-  const enableStrategyReasoner = s.runCounter % strategyEvery === 0;
-  const enableExternalNews = s.runCounter % newsEvery === 0;
+  const enableExternalContext = s.runCounter % externalEvery === 0;
+  const forceStrategyReasoner = s.runCounter % forceStrategyEvery === 0;
   console.log(
-    `[monitor] cycle=${s.runCounter} strategy=${enableStrategyReasoner} news=${enableExternalNews}`,
+    `[monitor] cycle=${s.runCounter} ext_ctx=${enableExternalContext} force_strategy=${forceStrategyReasoner}`,
   );
   const out = await runOrchestrator({
-    enableStrategyReasoner,
-    enableExternalNews,
+    enableExternalContext,
+    enableExternalNews: enableExternalContext,
+    enableStrategyReasoner: true,
+    forceStrategyReasoner,
+    enableHederaToolkit: forceStrategyReasoner,
     onEvent: (event) => {
-      const status = event.outputs?.ok === false ? "FAILED" : "OK";
+      const status = event.outputs?.skipped
+        ? "SKIPPED"
+        : event.outputs?.ok === false
+          ? "FAILED"
+          : "OK";
       console.log(
         `[trace] run=${event.run_id.slice(0, 8)} step=${event.step_index} agent=${event.agent} status=${status}`,
       );
