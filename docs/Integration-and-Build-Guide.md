@@ -327,6 +327,18 @@ Not required for MVP **strategy packs** in `Plan.md`.
 - **Two free web services** may both spin down when idle; the monitor service should wake on traffic to `/health`, but the **Telegram long-polling process** keeps the monitor container busy—verify behavior on your plan.
 - If blueprint apply failed earlier with “worker not available”, delete the stuck **worker** service in the dashboard (if any), push this repo’s `render.yaml`, and **sync** the blueprint again.
 
+### Telegram `409 Conflict` / `terminated by other getUpdates request`
+
+Telegram allows **only one** `getUpdates` (long-polling) session per bot token. If **Render** and your **laptop** both run `monitor-loop` with the same `TELEGRAM_BOT_TOKEN`, or two cloud instances overlap during deploy, you get **409**.
+
+**Fix:** Run the bot in **exactly one** place:
+
+1. Stop local `npm run monitor:start` (and any other copy), **or**
+2. Use a **second bot token** for local dev, **or**
+3. On an instance that must not poll, set `TELEGRAM_POLLING=false` (monitor still runs; Telegram is disabled there).
+
+After fixing duplicates, **redeploy** or restart so polling can attach cleanly.
+
 ---
 
 ## 15. Definition of “integrated”

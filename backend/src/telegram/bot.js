@@ -11,6 +11,15 @@ function isOpenAccess() {
   return v === "1" || v === "true" || v === "yes";
 }
 
+/**
+ * Long polling (getUpdates) allows only ONE process per TELEGRAM_BOT_TOKEN.
+ * Set TELEGRAM_POLLING=false on a duplicate deploy or while running monitor locally.
+ */
+function isTelegramPollingEnabled() {
+  const v = String(process.env.TELEGRAM_POLLING ?? "true").toLowerCase().trim();
+  return !(v === "0" || v === "false" || v === "no" || v === "off");
+}
+
 function loadAllowedChatIds() {
   const envIds = (process.env.TELEGRAM_ALLOWED_CHAT_IDS || "")
     .split(",")
@@ -146,6 +155,13 @@ function createBot({ onRunRequested } = {}) {
     return null;
   }
 
+  if (!isTelegramPollingEnabled()) {
+    console.log(
+      "[telegram] TELEGRAM_POLLING is off — bot not started (monitor still runs). Use when another instance owns getUpdates.",
+    );
+    return null;
+  }
+
   const bot = new TelegramBot(token, { polling: true });
   console.log("[telegram] bot started in long-polling mode");
   if (isOpenAccess()) {
@@ -248,8 +264,29 @@ function createBot({ onRunRequested } = {}) {
     }
   });
 
+  let conflict409Logged = false;
   bot.on("polling_error", (err) => {
-    console.error(`[telegram] polling error: ${err.message || err}`);
+    const msg = err?.message || String(err);
+    const isConflict =
+      /409|terminated by other getUpdates|Conflict:.*getUpdates/i.test(msg);
+    if (isConflict) {
+      if (!conflict409Logged) {
+        conflict409Logged = true;
+        console.error(
+          "[telegram] 409 Conflict — another process is already polling this TELEGRAM_BOT_TOKEN (only one getUpdates allowed).",
+        );
+        console.error(
+          "  Fix: (1) Stop local `npm run monitor:start` / any second Render service using the same token, OR (2) set TELEGRAM_POLLING=false on this instance.",
+        );
+        try {
+          bot.stopPolling();
+        } catch (_) {
+          /* ignore */
+        }
+      }
+      return;
+    }
+    console.error(`[telegram] polling error: ${msg}`);
   });
 
   return bot;
