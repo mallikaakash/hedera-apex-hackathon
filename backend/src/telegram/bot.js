@@ -216,6 +216,28 @@ function createBot({ onRunRequested } = {}) {
     }
   });
 
+  const { classifyIntent } = require("./router");
+  const { dispatchIntent } = require("./handlers");
+
+  bot.on("message", async (msg) => {
+    if (!msg.text || msg.text.startsWith("/")) return;
+    if (!isAuthorized(msg.chat.id)) return;
+
+    const text = msg.text.trim();
+    if (!text) return;
+
+    try {
+      const intent = await classifyIntent(text);
+      console.log(`[router] "${text.slice(0, 50)}" → ${intent}`);
+      bot.sendMessage(msg.chat.id, `[${intent}] Processing...`);
+      const response = await dispatchIntent(intent, text, { onRunRequested });
+      bot.sendMessage(msg.chat.id, response);
+    } catch (e) {
+      console.error(`[router] error: ${e.message}`);
+      bot.sendMessage(msg.chat.id, `Something went wrong: ${e.message}`);
+    }
+  });
+
   bot.on("polling_error", (err) => {
     console.error(`[telegram] polling error: ${err.message || err}`);
   });

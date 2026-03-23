@@ -28,7 +28,7 @@ services:
       - key: HEDERA_JSON_RPC_URL
         value: https://testnet.hashio.io/api
       - key: HEDERA_CHAIN_ID
-        value: 296
+        value: "296"
       - key: BONZO_LENDING_POOL_ADDRESS
         value: "0xf67DBe9bD1B331cA379c44b5562EAa1CE831EbC2"
       - key: HCS_TOPIC_ID
@@ -44,13 +44,13 @@ services:
       - key: DECISION_LOG_PATH
         value: data/decision-events.jsonl
       - key: MONITOR_INTERVAL_SECONDS
-        value: 900
+        value: "900"
       - key: EXTERNAL_CONTEXT_EVERY_N_RUNS
-        value: 3
+        value: "3"
       - key: FORCE_STRATEGY_EVERY_N_RUNS
-        value: 12
+        value: "12"
       - key: MAX_RUNS_PER_DAY
-        value: 96
+        value: "96"
       - key: GEMINI_API_KEY
         sync: false
       - key: GNEWS_API_KEY
@@ -65,11 +65,10 @@ services:
   - type: worker
     name: b-hive-monitor
     runtime: docker
-    dockerfilePath: ./backend/Dockerfile
+    dockerfilePath: ./backend/Dockerfile.monitor
     dockerContext: ./backend
     plan: free
     autoDeploy: true
-    startCommand: node scripts/monitor-loop.js
     envVars:
       - key: GROQ_API_KEY
         sync: false
@@ -88,7 +87,7 @@ services:
       - key: HEDERA_JSON_RPC_URL
         value: https://testnet.hashio.io/api
       - key: HEDERA_CHAIN_ID
-        value: 296
+        value: "296"
       - key: BONZO_LENDING_POOL_ADDRESS
         value: "0xf67DBe9bD1B331cA379c44b5562EAa1CE831EbC2"
       - key: HCS_TOPIC_ID
@@ -104,13 +103,13 @@ services:
       - key: DECISION_LOG_PATH
         value: data/decision-events.jsonl
       - key: MONITOR_INTERVAL_SECONDS
-        value: 900
+        value: "900"
       - key: EXTERNAL_CONTEXT_EVERY_N_RUNS
-        value: 3
+        value: "3"
       - key: FORCE_STRATEGY_EVERY_N_RUNS
-        value: 12
+        value: "12"
       - key: MAX_RUNS_PER_DAY
-        value: 96
+        value: "96"
       - key: GEMINI_API_KEY
         sync: false
       - key: GNEWS_API_KEY
